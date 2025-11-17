@@ -1,0 +1,11 @@
+<launch>
+
+    <!-- Node1 -->
+    <node pkg="zh1" exec="node" name="node" output="screen" >
+    </node>
+
+
+    <!-- RVIZ -->
+    <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share gyak12)/rviz/gyak12.rviz"/>
+
+</launch>

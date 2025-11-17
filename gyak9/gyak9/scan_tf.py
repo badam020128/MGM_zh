@@ -20,12 +20,15 @@ class ScanHandler(Node):
         self.declare_parameter("map_frame", "odom")
         self.map_frame = self.get_parameter('map_frame').value
 
+        #listener init
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
 
+        # adat tárolók
         self.pointlist_dict = {}
         self.namespace_list = ['robot1', 'robot2']
 
+        #publisher és subscriber dinamikus létrehozása
         self.pub_cloud = self.create_publisher(PointCloud2, "/cloud", 1)
         self.sub_list = []
         for ns in self.namespace_list:
@@ -35,6 +38,8 @@ class ScanHandler(Node):
         self.timer = self.create_timer(1.0, self.timer_callback)
         
 
+
+    #mérés fogadás, és átalakítás 2D-ből 3D-pontfelhővé
     def callback_scan(self, scan_in:LaserScan):
 
         newPoint = []
@@ -45,12 +50,14 @@ class ScanHandler(Node):
                 y = scan_in.ranges[i] * math.sin(angle)
                 z = 0.0
                 newPoint.append([x, y, z])
-        
+        # tárolás frame_id alapján
         self.pointlist_dict[scan_in.header.frame_id] = newPoint
 
     def timer_callback(self):
-
+        
+        #üres pointcloud inicializálás
         mapCloud = PointCloud2()
+        # végigmegy a pointlist_dict összes frame-jén
         for frame_id, points in self.pointlist_dict.items():
             self.get_logger().info(f"Frame_id: {frame_id}, cloud size: {len(points)}")
 
@@ -59,19 +66,23 @@ class ScanHandler(Node):
             cloud_header.stamp = self.get_clock().now().to_msg()
             localCloud = pcl2.create_cloud_xyz32(cloud_header, points)
 
+            #ellenőrzés, van -e transzformáció az adott frame és a map_frame között
             if self.tfBuffer.can_transform(self.map_frame, frame_id, rclpy.time.Time(), rclpy.duration.Duration(seconds=0.5)):
+                # lekérés
                 trans_base2map = self.tfBuffer.lookup_transform(self.map_frame, frame_id, rclpy.time.Time())
-
+                # transzformáció alkalmazása
                 transformed_localCloud = do_transform_cloud(localCloud, trans_base2map)
-
+                # ellenőrzi, hogy van-e már pontfelhő a mapCloud változóban
                 if mapCloud.width == 0:
+                    # első pontfelhő hozzáadás ha üres
                     mapCloud = transformed_localCloud
                 else:
+                    # egyébként egyesíti a pontfelhőket
                     mapCloud = self.merge_pointclouds(mapCloud, transformed_localCloud)
-
+        # publikálás
         self.pub_cloud.publish(mapCloud)
 
-
+    # Pontfelhők egyesítése amit a timer_callback használ
     def merge_pointclouds(self, pc1_msg:PointCloud2, pc2_msg:PointCloud2):
         # Ensure both have valid fields
         if not pc2_msg.fields:

@@ -55,6 +55,7 @@ class DIFF_ROBOT(Node):
         odom.pose.pose.orientation.w = q[3]
         self.pub_odom.publish(odom)
 
+        #broadcaster (megmondja hol van a mozgó frame)
         tf_stamped = TransformStamped()
         tf_stamped.header = odom.header
         tf_stamped.child_frame_id = odom.child_frame_id

@@ -13,6 +13,7 @@ class PathSavingNode(Node):
     def __init__(self):
         super().__init__('path_saving_node')
 
+        # paraméterek
         self.declare_parameter("topic_name", "/odom")
         topic_name = self.get_parameter("topic_name").value
 
@@ -22,31 +23,39 @@ class PathSavingNode(Node):
         self.declare_parameter("distance", 0.1)
         self.dist = self.get_parameter("distance").value
 
+        # belső változók
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
 
+        # tf listener init
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer, self)
 
+        # fájl megnyitása írásra
         self.file_writer = open(text_file_name, "w")
 
+        # subscriber odom topicra
         self.sub = self.create_subscription(Odometry, topic_name, self.odom_callback, 1)
 
 
     def odom_callback(self, msg:Odometry):
 
+        # különbség számítása az utolsó mentett pozícióhoz képest
         dx = self.x - msg.pose.pose.position.x
         dy = self.y - msg.pose.pose.position.y
         dz = self.z - msg.pose.pose.position.z
         distance = math.sqrt(dx**2 + dy**2 + dz**2)
 
+        # csak akkor folytatja, ha a megadott távolságnál nagyobbat mozdult
         if (distance > self.dist):
-
+            
+            # pozíció transzformálása map frame-be
             actual_pose = Pose()
             if msg.header.frame_id == "map":
                 actual_pose = msg.pose.pose
 
+            # egyébként tf segítségével transzformál
             else:
                 if self.tfBuffer.can_transform("map", msg.header.frame_id, rclpy.time.Time(), rclpy.duration.Duration(seconds=0.1)):
                     trans_2map = self.tfBuffer.lookup_transform("map", msg.header.frame_id, rclpy.time.Time())
@@ -67,13 +76,14 @@ class PathSavingNode(Node):
             yaw_radian = euler_from_quaternion(q)[2]
             yaw = yaw_radian / math.pi * 180.0
 
+            # fájlba írás
             self.file_writer.write(str(round(actual_pose.position.x, 2)) + ', ')
             self.file_writer.write(str(round(actual_pose.position.y, 2)) + ', ')
             self.file_writer.write(str(round(actual_pose.position.z, 2)) + ', ')
             self.file_writer.write(str(round(yaw,4)))
             self.file_writer.write('\n')
 
-
+            # frissíti az utolsó mentett pozíciót
             self.x = msg.pose.pose.position.x
             self.y = msg.pose.pose.position.y
             self.z = msg.pose.pose.position.z

@@ -10,6 +10,7 @@ class ZhPub(Node):
     def __init__(self):
         super().__init__('zh_node')
 
+        # Subscribe to /odom topic
         self.subscription = self.create_subscription(Odometry,'/odom',self.callback_odom,1)
         
         self.publisher_odom = self.create_publisher(Odometry, '/poz', 1)
@@ -27,13 +28,14 @@ class ZhPub(Node):
             (msg.pose.pose.position.x - self.last_msg.x)**2 + 
             (msg.pose.pose.position.y - self.last_msg.y)**2
         )
-        
+        # Publish only if the floored distance has increased (1 méterenként)
         if math.floor(self.dist_msg.data) < math.floor(self.dist_msg.data + elmozdulas):
             self.publisher_odom.publish(msg)
         
+        # összesített elmozdulás frissítése és publikálása
         self.dist_msg.data += elmozdulas
         self.publisher_dist.publish(self.dist_msg)
-
+        # Utolsó pozíció frissítése
         self.last_msg = msg.pose.pose.position
 
 

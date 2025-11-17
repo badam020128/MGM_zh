@@ -66,7 +66,7 @@ class PathPublisher(Node):
             msg_pose.pose.orientation.w = q[3]
 
             self.msg.poses.append(msg_pose)
-
+        # határok kiszámolása vizualizációhoz
         x_min = 9999.0
         x_max = -9999.0
         y_min = 9999.0
@@ -85,7 +85,7 @@ class PathPublisher(Node):
                 y_min = y
             if y > y_max:
                 y_max = y
-
+        # marker array létrehozása
         self.mark_array = MarkerArray()
         mark = Marker()
         mark.header.frame_id = "map"
@@ -102,7 +102,7 @@ class PathPublisher(Node):
         mark.color.r = 1.0
         mark.color.g = 0.0
         mark.color.b = 0.0
-
+        # 2 gömb a szélső pontokra
         mark.lifetime = rclpy.duration.Duration(seconds=1.1).to_msg()
 
         mark.id = 0
@@ -122,11 +122,11 @@ class PathPublisher(Node):
 
 
     def timer_callback(self):
-
+        # ha a frame_name "map", akkor csak publikálja a path-ot
         if (self.frame_name == "map"):
             self.msg.header.stamp = self.get_clock().now().to_msg()
             self.publisher.publish(self.msg)
-
+        # egyébként transzformálja a path-ot a megadott frame-be
         else:
             if self.tfBuffer.can_transform("map", self.frame_name, rclpy.time.Time(), rclpy.duration.Duration(seconds=0.1)):
                 trans_2frame = self.tfBuffer.lookup_transform("map", self.frame_name, rclpy.time.Time())

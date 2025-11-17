@@ -13,9 +13,7 @@ class ScanHandler(Node):
         super().__init__('test_viz')
 
         self.pub_cloud = self.create_publisher(PointCloud2, "/cloud", 1)
-
         self.pub_marker = self.create_publisher(MarkerArray, "/viz", 1)
-
         self.closest_point_pub = self.create_publisher(PoseStamped, "/closest_point", 1)
         
         self.sub = self.create_subscription(LaserScan, "/scan", self.callback_scan, 1)
@@ -23,6 +21,7 @@ class ScanHandler(Node):
     def callback_scan(self, scan_in:LaserScan):
         
         newPoint = []
+        # poláris koordináták átváltása kartéziánusra (3D)
         for i in range(len(scan_in.ranges)):
             
             if ((scan_in.range_min < scan_in.ranges[i]) and (scan_in.ranges[i] < scan_in.range_max)):
@@ -49,6 +48,8 @@ class ScanHandler(Node):
         marker.color.a = 1.0
         marker.color.b = 1.0
 
+
+        # Pontok hozzáadása a markerhez
         for point in newPoint:
             p = Point()
             p.x = point[0]
@@ -64,7 +65,7 @@ class ScanHandler(Node):
         self.pub_marker.publish(marker_array_)
 
         ## PointCloud
-
+        # Pontfelhő létrehozása és publikálása
         localCloud = pcl2.create_cloud_xyz32(scan_in.header, newPoint)
         self.pub_cloud.publish(localCloud)
 
@@ -72,12 +73,14 @@ class ScanHandler(Node):
         closest_dist = 1000
         closest_dist_angle = 0
 
+        # Keresése a legközelebbi pontnak
         for i in range(len(scan_in.ranges)):
             dist = scan_in.ranges[i] 
             if dist < closest_dist:
                 closest_dist = dist
                 closest_dist_angle = scan_in.angle_min + i * scan_in.angle_increment
 
+        # Publikálása a legközelebbi pontnak
         closest_point = PoseStamped()
         closest_point.header = scan_in.header
         closest_point.pose.position.x = closest_dist * math.cos(closest_dist_angle)
